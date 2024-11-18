@@ -71,25 +71,25 @@ export default function DashboardPage() {
           <TabsList className="inline-flex h-12 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-1 rounded-2xl border border-indigo-100/50 dark:border-white/10 shadow-lg">
             <TabsTrigger
               value="dashboard"
-              className="rounded-xl px-6 py-2.5 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
+              className="rounded-xl px-6 py-2.5 xs:px-2 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
             >
               ダッシュボード
             </TabsTrigger>
             <TabsTrigger
               value="timer"
-              className="rounded-xl px-6 py-2.5 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
+              className="rounded-xl px-6 py-2.5 xs:px-2 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
             >
               タイマー
             </TabsTrigger>
             <TabsTrigger
               value="calendar"
-              className="rounded-xl px-6 py-2.5 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
+              className="rounded-xl px-6 py-2.5 xs:px-2 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
             >
               カレンダー
             </TabsTrigger>
             <TabsTrigger
               value="history"
-              className="rounded-xl px-6 py-2.5 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
+              className="rounded-xl px-6 py-2.5 xs:px-2 text-slate-700 dark:text-slate-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white font-medium transition-all"
             >
               履歴
             </TabsTrigger>

@@ -159,7 +159,7 @@ export default function StudyDashboard() {
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
-                    <p className="text-sm flex-grow">{dailyTodo}</p>
+                    <p className="text-sm flex-grow mt-1">{dailyTodo}</p>
                   </div>
                 </div>
               ) : (
