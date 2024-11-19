@@ -15,20 +15,14 @@ import {
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
 import {BookOpen, Mail, Lock, User, Loader2} from "lucide-react";
-import {supabase} from "@/lib/supabaseClient";
 import {z} from "zod";
 
-const signupSchema = z
-  .object({
-    name: z.string().min(2, "名前は2文字以上で入力してください"),
-    email: z.string().email("有効なメールアドレスを入力してください"),
-    password: z.string().min(8, "パスワードは8文字以上で入力してください"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "パスワードが一致しません",
-    path: ["confirmPassword"],
-  });
+const signupSchema = z.object({
+  name: z.string().min(2, "名前は2文字以上で入力してください"),
+  email: z.string().email("有効なメールアドレスを入力してください"),
+  password: z.string().min(8, "パスワードは8文字以上で入力してください"),
+  confirmPassword: z.string(),
+});
 
 const containerVariants = {
   hidden: {opacity: 0},
@@ -83,28 +77,33 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const {data, error} = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            name: formData.name,
-          },
+      const response = await fetch("/api/auth/sign-up", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(formData),
       });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      toast({
-        title: "アカウント作成成功",
-        description: "確認メールを送信しました。メールを確認してください。",
-      });
-
-      router.push("/login");
-    } catch (error: any) {
+      if (response.ok) {
+        toast({
+          title: "アカウント作成成功",
+          description: "確認メールを送信しました。メールを確認してください。",
+        });
+        router.push("/login");
+      } else {
+        toast({
+          title: "エラー",
+          description: result.error || "アカウント作成に失敗しました",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "エラー",
-        description: error.message || "アカウント作成に失敗しました",
+        description: "アカウント作成に失敗しました",
         variant: "destructive",
       });
     } finally {

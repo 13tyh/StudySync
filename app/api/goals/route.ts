@@ -1,5 +1,6 @@
 import {NextResponse} from "next/server";
-import {supabase} from "@/lib/supabaseClient";
+import {createRouteHandlerClient} from "@supabase/auth-helpers-nextjs";
+import {cookies} from "next/headers";
 import {z} from "zod";
 
 const goalSchema = z.object({
@@ -8,14 +9,20 @@ const goalSchema = z.object({
   dailyTodo: z.string().optional(),
 });
 
-const DEMO_USER_ID = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const userId = url.searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json({error: "User ID is required"}, {status: 400});
+    }
+
+    const supabase = createRouteHandlerClient({cookies});
     const {data: goals, error} = await supabase
       .from("goals")
       .select("*")
-      .eq("user_id", DEMO_USER_ID)
+      .eq("user_id", userId)
       .single();
 
     if (error && error.code !== "PGRST116") {
@@ -41,39 +48,30 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = goalSchema.parse(body);
 
-    const {data: existingGoal} = await supabase
-      .from("goals")
-      .select("id")
-      .eq("user_id", DEMO_USER_ID)
-      .single();
+    const supabase = createRouteHandlerClient({cookies});
+    const {
+      data: {user},
+    } = await supabase.auth.getUser();
 
-    const {data: goal, error} = await supabase
-      .from("goals")
-      .upsert({
-        user_id: DEMO_USER_ID,
-        daily_goal: validatedData.dailyGoal,
-        weekly_goal: validatedData.weeklyGoal,
-        daily_todo: validatedData.dailyTodo,
-        ...(existingGoal ? {id: existingGoal.id} : {}),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error updating goals:", error);
-      throw error;
-    }
-
-    return NextResponse.json(goal);
-  } catch (error) {
-    console.error("Error updating goals:", error);
-    if (error instanceof z.ZodError) {
+    if (!user) {
       return NextResponse.json(
-        {error: "Invalid request data", details: error.errors},
-        {status: 400}
+        {error: "User not authenticated"},
+        {status: 401}
       );
     }
 
-    return NextResponse.json({error: "Failed to update goals"}, {status: 500});
+    const {error} = await supabase
+      .from("goals")
+      .upsert({user_id: user.id, ...validatedData});
+
+    if (error) {
+      console.error("Error saving goals:", error);
+      return NextResponse.json({error: "Failed to save goals"}, {status: 500});
+    }
+
+    return NextResponse.json({message: "Goals saved successfully"});
+  } catch (error) {
+    console.error("Error saving goals:", error);
+    return NextResponse.json({error: "Failed to save goals"}, {status: 500});
   }
 }

@@ -5,14 +5,13 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
-import {Settings2} from "lucide-react";
+// import {Settings2} from "lucide-react";
 import {useToast} from "@/hooks/use-toast";
 import {useStudyStore} from "@/hooks/useStudyStore";
 import {supabase} from "@/lib/supabaseClient";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -39,31 +38,40 @@ export function SettingsDialog() {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const {data: user} = await supabase.auth.getUser();
+      const {
+        data: {user},
+      } = await supabase.auth.getUser();
 
-      if (!user.user) {
-        // デモユーザーとして保存
-        setDailyGoal(formData.dailyGoal * 60);
-        setWeeklyGoal(formData.weeklyGoal * 60);
-        setDailyTodo(formData.dailyTodo);
-
+      if (!user) {
         toast({
-          title: "設定を保存しました",
-          description: "デモモードでの変更は一時的なものです",
+          title: "エラー",
+          description: "ユーザーが認証されていません",
+          variant: "destructive",
         });
-
-        setIsOpen(false);
         return;
       }
 
-      const {error} = await supabase.from("goals").upsert({
-        user_id: user.user.id,
+      // 既存の目標を取得
+      const {data: existingGoals, error: fetchError} = await supabase
+        .from("goals")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (fetchError && fetchError.code !== "PGRST116") {
+        throw fetchError;
+      }
+
+      // 目標を新規作成または更新
+      const {error: upsertError} = await supabase.from("goals").upsert({
+        user_id: user.id,
         daily_goal: formData.dailyGoal * 60,
         weekly_goal: formData.weeklyGoal * 60,
         daily_todo: formData.dailyTodo,
+        id: existingGoals ? existingGoals.id : undefined, // 既存の目標があればIDを設定
       });
 
-      if (error) throw error;
+      if (upsertError) throw upsertError;
 
       setDailyGoal(formData.dailyGoal * 60);
       setWeeklyGoal(formData.weeklyGoal * 60);
@@ -88,69 +96,64 @@ export function SettingsDialog() {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Settings2 className="h-5 w-5" />
-          <span className="sr-only">設定</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>学習目標の設定</DialogTitle>
-          <DialogDescription>
-            1日と週間の学習目標を設定してください
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="dailyGoal">1日の目標時間（時間）</Label>
-            <Input
-              id="dailyGoal"
-              type="number"
-              min="0"
-              step="0.5"
-              value={formData.dailyGoal}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  dailyGoal: parseFloat(e.target.value),
-                })
-              }
-            />
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline">目標を設定</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>目標を設定</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dailyGoal">1日の目標時間（時間）</Label>
+              <Input
+                id="dailyGoal"
+                type="number"
+                min="0"
+                step="0.5"
+                value={formData.dailyGoal}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    dailyGoal: parseFloat(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="weeklyGoal">1週間の目標時間（時間）</Label>
+              <Input
+                id="weeklyGoal"
+                type="number"
+                min="0"
+                step="0.5"
+                value={formData.weeklyGoal}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    weeklyGoal: parseFloat(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dailyTodo">今日の目標</Label>
+              <Textarea
+                id="dailyTodo"
+                value={formData.dailyTodo}
+                onChange={(e) =>
+                  setFormData({...formData, dailyTodo: e.target.value})
+                }
+              />
+            </div>
+            <Button onClick={handleSave} disabled={isLoading}>
+              保存
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="weeklyGoal">週間の目標時間（時間）</Label>
-            <Input
-              id="weeklyGoal"
-              type="number"
-              min="0"
-              step="0.5"
-              value={formData.weeklyGoal}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  weeklyGoal: parseFloat(e.target.value),
-                })
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="dailyTodo">今日の目標</Label>
-            <Textarea
-              id="dailyTodo"
-              value={formData.dailyTodo}
-              onChange={(e) =>
-                setFormData({...formData, dailyTodo: e.target.value})
-              }
-              placeholder="今日の学習目標を入力..."
-            />
-          </div>
-          <Button onClick={handleSave} className="w-full" disabled={isLoading}>
-            {isLoading ? "保存中..." : "保存"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
