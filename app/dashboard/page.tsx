@@ -11,10 +11,29 @@ import LoadingScreen from "@/components/LoadingScreen";
 import Background3D from "@/components/Background3D";
 import {motion} from "framer-motion";
 import {useTheme} from "next-themes";
+import {signOut} from "next-auth/react";
+import {LogOut} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {Button} from "@/components/ui/button";
+import {toast} from "@/components/ui/use-toast";
+import {useRouter} from "next/navigation";
+import {supabase} from "@/lib/supabaseClient";
+import useStudyStore from "@/hooks/useStudyStore";
 
 export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const {theme} = useTheme();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -22,6 +41,47 @@ export default function DashboardPage() {
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      // セッションの取得確認
+      const {
+        data: {session},
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        // すでにログアウト状態
+        router.push("/login");
+        return;
+      }
+
+      // Supabaseのログアウト処理
+      const {error} = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // ストアのリセット
+      useStudyStore.getState().reset();
+
+      // セッションストレージとローカルストレージのクリア
+      sessionStorage.clear();
+      localStorage.clear();
+
+      // 遷移（強制リロード）
+      window.location.href = "/login";
+
+      toast({
+        title: "ログアウト完了",
+        description: "ログアウトしました",
+      });
+    } catch (error) {
+      console.error("ログアウトエラー:", error);
+      toast({
+        title: "エラー",
+        description: "ログアウトに失敗しまし��",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -64,7 +124,17 @@ export default function DashboardPage() {
               学習の進捗を可視化
             </motion.p>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Button
+              variant="outline"
+              onClick={() => setShowLogoutDialog(true)}
+              className="flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>ログアウト</span>
+            </Button>
+          </div>
         </header>
 
         <Tabs defaultValue="dashboard" className="space-y-8">
@@ -121,6 +191,25 @@ export default function DashboardPage() {
           </motion.div>
         </Tabs>
       </motion.div>
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ログアウトの確認</AlertDialogTitle>
+            <AlertDialogDescription>
+              ログアウトしてもよろしいですか？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              ログアウト
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

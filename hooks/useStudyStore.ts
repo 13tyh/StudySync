@@ -19,7 +19,9 @@ interface StudySession {
   subject: string;
   duration: number;
   note: string | null;
-  user_id?: string;
+  user_id: string; // 必須に変更
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Goals {
@@ -28,7 +30,23 @@ interface Goals {
   dailyTodo: string;
 }
 
-const INITIAL_TIME = 25 * 60;
+const INITIAL_STATE = {
+  dailyGoal: 0,
+  weeklyGoal: 0,
+  dailyTodo: "",
+  todayStudyTime: 0,
+  totalStudyTime: 0,
+  streakDays: 0,
+  longestStreak: 0,
+  lastStudyDate: "",
+  motivation: 100,
+  sessions: [] as StudySession[],
+  isStudying: false,
+  currentSubject: null as string | null,
+  currentTimer: 25 * 60,
+  startTime: null as Date | null,
+  currentUser: null as any,
+};
 
 interface StudyStore {
   dailyGoal: number;
@@ -61,30 +79,19 @@ interface StudyStore {
   updateTodayTime: (minutes: number) => void;
   resetTodayTime: () => void;
   updateMotivation: (value: number) => void;
-  addSession: (session: Omit<StudySession, "id">) => Promise<void>;
+  addSession: (session: Omit<StudySession, "id" | "user_id">) => Promise<void>;
   checkAndUpdateStreak: () => void;
   setCurrentUser: (user: any) => Promise<void>;
   fetchUserData: () => Promise<void>;
+  reset: () => void;
+  initialize: (userId: string) => Promise<void>;
+  logout: () => void;
 }
 
 const useStudyStore = create<StudyStore>()(
   persist(
     (set, get) => ({
-      dailyGoal: 0,
-      weeklyGoal: 0,
-      dailyTodo: "",
-      todayStudyTime: 0,
-      totalStudyTime: 0,
-      streakDays: 0,
-      longestStreak: 0,
-      lastStudyDate: "",
-      motivation: 100,
-      sessions: [],
-      isStudying: false,
-      currentSubject: null,
-      currentTimer: INITIAL_TIME,
-      startTime: null,
-      currentUser: null,
+      ...INITIAL_STATE,
 
       setDailyGoal: (minutes) => {
         if (minutes < 0) throw new Error("目標時間は0以上である必要があります");
@@ -145,27 +152,37 @@ const useStudyStore = create<StudyStore>()(
       },
       addSession: async (sessionData) => {
         try {
-          const user = await getUser();
+          const {
+            data: {user},
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("認証が必要です");
+
           const newSession = {
             id: crypto.randomUUID(),
             user_id: user.id,
             ...sessionData,
-            date: new Date(sessionData.date),
-            note: sessionData.note?.trim() || null,
+            date: sessionData.date.toISOString(), // Convert date to string
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
-          await insertStudySession({
-            ...newSession,
-            date: newSession.date.toISOString(),
-            created_at: newSession.date.toISOString(),
-          });
+
+          await insertStudySession(newSession);
+
           set((state) => ({
-            sessions: [newSession, ...state.sessions].sort(
-              (a, b) => b.date.getTime() - a.date.getTime()
+            sessions: [
+              {
+                ...newSession,
+                date: new Date(newSession.date),
+              },
+              ...state.sessions,
+            ].sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
             ),
           }));
+
           get().checkAndUpdateStreak();
         } catch (error) {
-          console.error("セッションの追加に失敗しました:", error);
+          console.error("セッション追加エラー:", error);
           throw error;
         }
       },
@@ -214,7 +231,7 @@ const useStudyStore = create<StudyStore>()(
       resetTimer: () => {
         set({
           isStudying: false,
-          currentTimer: INITIAL_TIME,
+          currentTimer: 25 * 60,
         });
       },
       setCurrentUser: async (user) => {
@@ -235,10 +252,35 @@ const useStudyStore = create<StudyStore>()(
           throw error;
         }
       },
+      reset: () => {
+        set(INITIAL_STATE);
+      },
+      initialize: async (userId: string) => {
+        try {
+          set({currentUser: userId});
+          await get().fetchUserData();
+        } catch (error) {
+          console.error("初期化エラー:", error);
+          throw error;
+        }
+      },
+      logout: () => {
+        get().reset();
+        localStorage.removeItem("study-storage");
+      },
     }),
     {
       name: "study-storage",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => sessionStorage), // localStorage から sessionStorage に変更
+      partialize: (state) => ({
+        // 永続化するステートを制限
+        dailyGoal: state.dailyGoal,
+        weeklyGoal: state.weeklyGoal,
+        dailyTodo: state.dailyTodo,
+        streakDays: state.streakDays,
+        longestStreak: state.longestStreak,
+        lastStudyDate: state.lastStudyDate,
+      }),
     }
   )
 );

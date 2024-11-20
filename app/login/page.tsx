@@ -2,19 +2,21 @@
 
 import {useState} from "react";
 import {useRouter} from "next/navigation";
-import {motion} from "framer-motion";
+import {supabase} from "@/lib/supabaseClient";
+import useStudyStore from "@/hooks/useStudyStore";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import {Label} from "@/components/ui/label";
-import {useToast} from "@/hooks/use-toast";
+import {useToast} from "@/components/ui/use-toast";
 import {Mail, Lock, Loader2} from "lucide-react";
+import {motion} from "framer-motion";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,30 +32,31 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+      const {error} = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "ログイン成功",
-          description: "ダッシュボードに移動します",
-        });
-        router.push("/dashboard");
-      } else {
-        toast({
-          title: "エラー",
-          description: result.error || "ログインに失敗しました",
-          variant: "destructive",
-        });
+      if (error) {
+        throw error;
       }
+
+      // セッションの獲得
+      const {
+        data: {session},
+      } = await supabase.auth.getSession();
+      if (session) {
+        // ストアの初期化
+        await useStudyStore.getState().initialize(session.user.id);
+      }
+
+      toast({
+        title: "ログイン成功",
+        description: "ダッシュボードに移動します",
+      });
+      router.push("/dashboard");
     } catch (error) {
+      console.error("ログインエラー:", error);
       toast({
         title: "エラー",
         description: "ログインに失敗しました",
@@ -134,7 +137,6 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
                 disabled={isLoading}
-                onClick={handleLogin}
               >
                 {isLoading ? (
                   <>
