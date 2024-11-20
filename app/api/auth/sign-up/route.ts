@@ -1,6 +1,7 @@
+import {createRouteHandlerClient} from "@supabase/auth-helpers-nextjs";
 import {NextResponse} from "next/server";
-import {supabase} from "@/lib/supabaseClient";
 import {z} from "zod";
+import {supabase} from "@/lib/supabaseClient";
 
 const signupSchema = z.object({
   name: z.string().min(2, "名前は2文字以上で入力してください"),
@@ -21,7 +22,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const {data, error} = await supabase.auth.signUp({
+    // ユーザー登録
+    const {
+      data: {user},
+      error: signUpError,
+    } = await supabase.auth.signUp({
       email: validatedData.email,
       password: validatedData.password,
       options: {
@@ -31,21 +36,26 @@ export async function POST(request: Request) {
       },
     });
 
-    if (error) {
-      console.error("Error signing up:", error);
-      return NextResponse.json({error: error.message}, {status: 500});
+    if (signUpError) {
+      console.error("Signup error:", signUpError);
+      return NextResponse.json({error: signUpError.message}, {status: 400});
     }
 
-    return NextResponse.json({message: "アカウント作成成功"});
+    return NextResponse.json({
+      message: "確認メールを送信しました。メールを確認してください。",
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        {error: "Invalid request data", details: error.errors},
+        {error: "入力データが無効です", details: error.errors},
         {status: 400}
       );
     }
 
     console.error("Unexpected error:", error);
-    return NextResponse.json({error: "Internal server error"}, {status: 500});
+    return NextResponse.json(
+      {error: "サーバーエラーが発生しました"},
+      {status: 500}
+    );
   }
 }

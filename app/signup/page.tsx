@@ -26,17 +26,12 @@ const signupSchema = z.object({
 
 const containerVariants = {
   hidden: {opacity: 0},
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+  visible: {opacity: 1, transition: {staggerChildren: 0.3}},
 };
 
 const itemVariants = {
   hidden: {opacity: 0, y: 20},
-  show: {opacity: 1, y: 0},
+  visible: {opacity: 1, y: 0},
 };
 
 export default function SignupPage() {
@@ -116,7 +111,7 @@ export default function SignupPage() {
       <motion.div
         variants={containerVariants}
         initial="hidden"
-        animate="show"
+        animate="visible"
         className="w-full max-w-md space-y-8"
       >
         <motion.div

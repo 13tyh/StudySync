@@ -26,9 +26,9 @@ import {
 
 export const SUBJECTS = [
   {value: "業務", label: "業務"},
-  {value: "スキルの勉強", label: "スキル開発"},
-  {value: "語学の勉強", label: "語学"},
-  {value: "資格の勉強", label: "資格"},
+  {value: "スキル", label: "スキル"},
+  {value: "語学", label: "語学"},
+  {value: "資格", label: "資格"},
   {value: "課題", label: "課題"},
   {value: "その他", label: "その他"},
 ] as const;
