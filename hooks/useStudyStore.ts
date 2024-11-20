@@ -1,9 +1,17 @@
 "use client";
 
-import {format} from "date-fns";
 import {create} from "zustand";
 import {persist, createJSONStorage} from "zustand/middleware";
 import {supabase} from "@/lib/supabaseClient";
+import {format} from "date-fns";
+import {
+  getUser,
+  fetchGoals,
+  insertStudySession,
+  fetchStudySessions,
+  deleteStudySession,
+  updateStudySession,
+} from "@/lib/dbUtils";
 
 interface StudySession {
   id: string;
@@ -11,6 +19,7 @@ interface StudySession {
   subject: string;
   duration: number;
   note: string | null;
+  user_id?: string;
 }
 
 interface Goals {
@@ -36,34 +45,31 @@ interface StudyStore {
   currentSubject: string | null;
   currentTimer: number;
   startTime: Date | null;
+  currentUser: any;
 
-  // 基本機能
   setDailyGoal: (minutes: number) => void;
   setWeeklyGoal: (minutes: number) => void;
   setDailyTodo: (todo: string) => void;
   setGoals: (goals: Goals) => void;
   fetchGoals: () => Promise<void>;
-
-  // タイマー関連
   setCurrentSubject: (subject: string | null) => void;
   setCurrentTimer: (seconds: number) => void;
   setStartTime: (time: Date | null) => void;
   setIsStudying: (isStudying: boolean) => void;
   resetTimer: () => void;
-
-  // 学習記録関連
   updateTotalTime: (minutes: number) => void;
   updateTodayTime: (minutes: number) => void;
   resetTodayTime: () => void;
   updateMotivation: (value: number) => void;
   addSession: (session: Omit<StudySession, "id">) => Promise<void>;
   checkAndUpdateStreak: () => void;
+  setCurrentUser: (user: any) => Promise<void>;
+  fetchUserData: () => Promise<void>;
 }
 
 const useStudyStore = create<StudyStore>()(
   persist(
     (set, get) => ({
-      // 基本状態
       dailyGoal: 0,
       weeklyGoal: 0,
       dailyTodo: "",
@@ -74,12 +80,11 @@ const useStudyStore = create<StudyStore>()(
       lastStudyDate: "",
       motivation: 100,
       sessions: [],
-
-      // タイマー状態
       isStudying: false,
       currentSubject: null,
       currentTimer: INITIAL_TIME,
       startTime: null,
+      currentUser: null,
 
       setDailyGoal: (minutes) => {
         if (minutes < 0) throw new Error("目標時間は0以上である必要があります");
@@ -90,9 +95,11 @@ const useStudyStore = create<StudyStore>()(
         set({weeklyGoal: minutes});
       },
       setDailyTodo: (todo) => {
-        if (todo.length > 1000)
-          throw new Error("目標は1000文字以内である必要があります");
-        set({dailyTodo: todo.trim()});
+        if (todo.length > 0 && todo.length <= 1000) {
+          set({dailyTodo: todo.trim()});
+        } else {
+          throw new Error("目標は1文字以上1000文字以内である必要があります");
+        }
       },
       setGoals: (goals) => {
         if (goals.dailyGoal < 0 || goals.weeklyGoal < 0) {
@@ -106,24 +113,12 @@ const useStudyStore = create<StudyStore>()(
       },
       fetchGoals: async () => {
         try {
-          const {
-            data: {user},
-          } = await supabase.auth.getUser();
-          if (!user) throw new Error("認証されていないユーザーです");
-
-          const {data, error} = await supabase
-            .from("goals")
-            .select("*")
-            .eq("user_id", user.id)
-            .single();
-
-          if (error) throw error;
-          if (!data) throw new Error("目標が見つかりません");
-
+          const user = await getUser();
+          const goals = await fetchGoals(user.id);
           set({
-            dailyGoal: data.daily_goal,
-            weeklyGoal: data.weekly_goal,
-            dailyTodo: data.daily_todo,
+            dailyGoal: goals.daily_goal,
+            weeklyGoal: goals.weekly_goal,
+            dailyTodo: goals.daily_todo || "",
           });
         } catch (error) {
           console.error("目標の取得に失敗しました:", error);
@@ -142,90 +137,55 @@ const useStudyStore = create<StudyStore>()(
           todayStudyTime: state.todayStudyTime + minutes,
         }));
       },
-      resetTodayTime: () => set({todayStudyTime: 0}),
-      updateMotivation: (value) =>
-        set((state) => ({
-          motivation: Math.min(100, Math.max(0, state.motivation + value)),
-        })),
-
-      setCurrentSubject: (subject) => set({currentSubject: subject}),
-      setStartTime: (time) => set({startTime: time}),
-
-      setCurrentTimer: (seconds) => {
-        if (seconds < 0)
-          throw new Error("タイマー値は0以上である必要があります");
-        set({currentTimer: seconds});
+      resetTodayTime: () => {
+        set({todayStudyTime: 0});
       },
-
+      updateMotivation: (value) => {
+        set({motivation: value});
+      },
       addSession: async (sessionData) => {
         try {
-          const {
-            data: {user},
-          } = await supabase.auth.getUser();
-          if (!user) throw new Error("認証されていないユーザーです");
-
-          // セッションデータの作成時にnoteをトリム
+          const user = await getUser();
           const newSession = {
             id: crypto.randomUUID(),
+            user_id: user.id,
             ...sessionData,
             date: new Date(sessionData.date),
-            note: sessionData.note?.trim() || null, // null に変更
+            note: sessionData.note?.trim() || null,
           };
-
-          // Supabaseへの保存
-          const {error} = await supabase.from("study_sessions").insert({
-            user_id: user.id,
-            subject: newSession.subject,
-            duration: newSession.duration,
-            note: newSession.note,
+          await insertStudySession({
+            ...newSession,
+            date: newSession.date.toISOString(),
             created_at: newSession.date.toISOString(),
           });
-
-          if (error) throw error;
-
-          // ローカルステートの更新
-          set((state) => {
-            const updatedSessions = [newSession, ...state.sessions];
-            return {
-              sessions: updatedSessions.sort((a, b) => {
-                const dateA =
-                  a.date instanceof Date ? a.date : new Date(a.date);
-                const dateB =
-                  b.date instanceof Date ? b.date : new Date(b.date);
-                return dateB.getTime() - dateA.getTime();
-              }),
-            };
-          });
-
+          set((state) => ({
+            sessions: [newSession, ...state.sessions].sort(
+              (a, b) => b.date.getTime() - a.date.getTime()
+            ),
+          }));
           get().checkAndUpdateStreak();
         } catch (error) {
           console.error("セッションの追加に失敗しました:", error);
           throw error;
         }
       },
-
       checkAndUpdateStreak: () => {
         set((state) => {
           const today = format(new Date(), "yyyy-MM-dd");
           const lastDate = state.lastStudyDate;
-
           let newStreak = state.streakDays;
           if (lastDate === today) {
-            return state; // 同日の場合は更新しない
+            return state;
           }
-
-          // 前日の場合はストリークを継続
           const yesterday = format(
             new Date(Date.now() - 24 * 60 * 60 * 1000),
             "yyyy-MM-dd"
           );
-
           if (lastDate === yesterday) {
             newStreak += 1;
           } else {
-            newStreak = 1; // ストリークリセット
+            newStreak = 1;
           }
-
           return {
             streakDays: newStreak,
             longestStreak: Math.max(state.longestStreak, newStreak),
@@ -233,34 +193,52 @@ const useStudyStore = create<StudyStore>()(
           };
         });
       },
-
-      setIsStudying: (studying: boolean) => {
-        try {
-          const state = get();
-          // 学習開始時の検証
-          if (studying && !state.currentSubject) {
-            throw new Error("カテゴリーを選択してください");
-          }
-
-          set({
-            isStudying: studying,
-          });
-        } catch (error) {
-          console.error("学習状態の更新に失敗しました:", error);
-          throw error;
+      setIsStudying: (studying) => {
+        const state = get();
+        if (studying && !state.currentSubject) {
+          throw new Error("カテゴリーを選択してください");
         }
+        set({isStudying: studying});
       },
-
+      setCurrentSubject: (subject) => {
+        set({currentSubject: subject});
+      },
+      setCurrentTimer: (seconds) => {
+        if (seconds < 0)
+          throw new Error("タイマー値は0以上である必要があります");
+        set({currentTimer: seconds});
+      },
+      setStartTime: (time) => {
+        set({startTime: time});
+      },
       resetTimer: () => {
         set({
           isStudying: false,
           currentTimer: INITIAL_TIME,
         });
       },
+      setCurrentUser: async (user) => {
+        set({currentUser: user});
+      },
+      fetchUserData: async () => {
+        try {
+          const {
+            data: {user},
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("認証が必要です");
+
+          set({currentUser: user});
+          await get().fetchGoals();
+          // 他の必要なデータ取得
+        } catch (error) {
+          console.error("ユーザーデータの取得に失敗:", error);
+          throw error;
+        }
+      },
     }),
     {
-      name: "study-storage", // ストレージの名前
-      storage: createJSONStorage(() => localStorage), // ここでstorageオプションを使用
+      name: "study-storage",
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

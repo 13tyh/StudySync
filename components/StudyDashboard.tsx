@@ -1,13 +1,16 @@
 "use client";
 
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
 import {motion} from "framer-motion";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Progress} from "@/components/ui/progress";
 import {Badge} from "@/components/ui/badge";
+import {useToast} from "@/components/ui/use-toast";
 import useStudyStore from "@/hooks/useStudyStore";
 import {SUBJECTS} from "./StudyTimer";
 import {SettingsDialog} from "./ui/settings-dialog";
+import {supabase} from "@/lib/supabaseClient";
+import type {StudySession} from "@/types/StudySession";
 import {
   BookOpen,
   Target,
@@ -24,9 +27,7 @@ const containerAnimation = {
   hidden: {opacity: 0},
   show: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
+    transition: {staggerChildren: 0.1},
   },
 };
 
@@ -36,6 +37,9 @@ const itemAnimation = {
 };
 
 export default function StudyDashboard() {
+  const {toast} = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [userSessions, setUserSessions] = useState<StudySession[]>([]);
   const {
     todayStudyTime,
     totalStudyTime,
@@ -44,12 +48,80 @@ export default function StudyDashboard() {
     streakDays,
     longestStreak,
     motivation,
-    sessions,
     dailyTodo,
+    fetchGoals,
   } = useStudyStore();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setIsLoading(true);
+
+        // デバッグ用のログを追加
+        console.log("認証状態を確認中...");
+
+        const {
+          data: {user},
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        // デバッグ用のログ
+        console.log("認証結果:", {user, authError});
+
+        if (authError) {
+          console.error("認証エラー:", authError);
+          toast({
+            title: "認証エラー",
+            description: authError.message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!user) {
+          console.log("ユーザーが見つかりません");
+          // ログインページにリダイレクト
+          window.location.href = "/login";
+          return;
+        }
+
+        // ユーザーの目標を取得
+        await fetchGoals();
+
+        // ユーザーのセッションを取得
+        const {data: sessions, error: sessionsError} = await supabase
+          .from("study_sessions")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", {ascending: false});
+
+        if (sessionsError) {
+          console.error("セッション取得エラー:", sessionsError);
+          throw sessionsError;
+        }
+
+        setUserSessions(sessions || []);
+      } catch (error) {
+        console.error("データ取得エラー:", error);
+        toast({
+          title: "エラー",
+          description: "データの取得に失敗しました。再度ログインしてください。",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const dailyProgress = (todayStudyTime / dailyGoal) * 100;
   const weeklyProgress = (totalStudyTime / weeklyGoal) * 100;
+
+  if (isLoading) {
+    return <div>読み込み中...</div>;
+  }
 
   return (
     <motion.div
@@ -182,7 +254,7 @@ export default function StudyDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {sessions
+                {userSessions
                   .slice(-3)
                   .reverse()
                   .map((session) => (
@@ -215,7 +287,7 @@ export default function StudyDashboard() {
                       <Badge>{session.duration}分</Badge>
                     </div>
                   ))}
-                {sessions.length === 0 && (
+                {userSessions.length === 0 && (
                   <div className="text-center text-sm text-muted-foreground py-4">
                     まだ学習記録がありません
                   </div>

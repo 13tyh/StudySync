@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
-import {BookOpen, Mail, Lock, Loader2} from "lucide-react";
+import {Mail, Lock, Loader2} from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -64,40 +64,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/demo", {
-        method: "POST",
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "デモモードで開始",
-          description: "デモ用のダッシュボードを表示します",
-        });
-        router.push("/dashboard");
-      } else {
-        toast({
-          title: "エラー",
-          description: result.error || "デモモードの開始に失敗しました",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Demo access error:", error);
-      toast({
-        title: "エラー",
-        description: "デモモードの開始に失敗しました",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-4">
       <motion.div
@@ -105,17 +71,26 @@ export default function LoginPage() {
         animate={{opacity: 1, y: 0}}
         className="w-full max-w-md"
       >
-        <Card>
-          <CardHeader>
-            <CardTitle>ログイン</CardTitle>
-            <CardDescription>アカウント情報を入力してください</CardDescription>
+        <Card className="bg-white dark:bg-gray-900 shadow-2xl border border-white/20">
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white">
+              ログイン
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              アカウント情報を入力してください
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">メールアドレス</Label>
+                <Label
+                  htmlFor="email"
+                  className="text-gray-900 dark:text-white"
+                >
+                  メールアドレス
+                </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-900 dark:text-white" />
                   <Input
                     id="email"
                     type="email"
@@ -123,7 +98,7 @@ export default function LoginPage() {
                     onChange={(e) =>
                       setFormData({...formData, email: e.target.value})
                     }
-                    className="pl-10"
+                    className="pl-10 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700"
                     placeholder="メールアドレスを入力"
                     required
                     disabled={isLoading}
@@ -132,9 +107,14 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">パスワード</Label>
+                <Label
+                  htmlFor="password"
+                  className="text-gray-900 dark:text-white"
+                >
+                  パスワード
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-900 dark:text-white" />
                   <Input
                     id="password"
                     type="password"
@@ -142,7 +122,7 @@ export default function LoginPage() {
                     onChange={(e) =>
                       setFormData({...formData, password: e.target.value})
                     }
-                    className="pl-10"
+                    className="pl-10 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700"
                     placeholder="パスワードを入力"
                     required
                     disabled={isLoading}
@@ -150,7 +130,12 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                disabled={isLoading}
+                onClick={handleLogin}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -161,29 +146,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-4 text-center">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleDemoLogin}
-                className="w-full"
-                disabled={isLoading}
-              >
-                デモモードで開始
-              </Button>
-            </div>
-
-            <div className="mt-4 text-center">
-              <Button
-                variant="link"
-                onClick={() => router.push("/signup")}
-                className="text-sm text-muted-foreground hover:text-primary"
-                disabled={isLoading}
-              >
-                アカウントをお持ちでない方はこちら
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </motion.div>
