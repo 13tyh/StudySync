@@ -15,7 +15,6 @@ import {
 import {Label} from "@/components/ui/label";
 import {useToast} from "@/hooks/use-toast";
 import {BookOpen, Mail, Lock, Loader2} from "lucide-react";
-import {supabase} from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,24 +30,33 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const {data, error} = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+      const response = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       });
 
-      if (error) throw error;
+      const result = await response.json();
 
+      if (response.ok) {
+        toast({
+          title: "ログイン成功",
+          description: "ダッシュボードに移動します",
+        });
+        router.push("/dashboard");
+      } else {
+        toast({
+          title: "エラー",
+          description: result.error || "ログインに失敗しました",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
-        title: "ログイン成功",
-        description: "ダッシュボードに移動します",
-      });
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch (error: any) {
-      toast({
-        title: "ログインエラー",
-        description: "メールアドレスまたはパスワードが正しくありません",
+        title: "エラー",
+        description: "ログインに失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -59,12 +67,25 @@ export default function LoginPage() {
   const handleDemoLogin = async () => {
     setIsLoading(true);
     try {
-      // デモユーザーとしてダッシュボードに直接遷移
-      router.push("/dashboard");
-      toast({
-        title: "デモモードで開始",
-        description: "デモ用のダッシュボードを表示します",
+      const response = await fetch("/api/auth/demo", {
+        method: "POST",
       });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "デモモードで開始",
+          description: "デモ用のダッシュボードを表示します",
+        });
+        router.push("/dashboard");
+      } else {
+        toast({
+          title: "エラー",
+          description: result.error || "デモモードの開始に失敗しました",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Demo access error:", error);
       toast({
@@ -82,26 +103,12 @@ export default function LoginPage() {
       <motion.div
         initial={{opacity: 0, y: 20}}
         animate={{opacity: 1, y: 0}}
-        className="w-full max-w-md space-y-8"
+        className="w-full max-w-md"
       >
-        <div className="text-center text-white space-y-4">
-          <div className="flex justify-center">
-            <div className="bg-white p-4 rounded-full shadow-lg">
-              <BookOpen className="h-12 w-12 text-indigo-500" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight">StudySync</h1>
-          <p className="text-lg text-white/80">学習時間を可視化</p>
-        </div>
-
-        <Card className="backdrop-blur-sm bg-white/95 dark:bg-gray-800/95 shadow-2xl border-white/20">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">
-              ログイン
-            </CardTitle>
-            <CardDescription className="text-center">
-              アカウント情報を入力してください
-            </CardDescription>
+        <Card>
+          <CardHeader>
+            <CardTitle>ログイン</CardTitle>
+            <CardDescription>アカウント情報を入力してください</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -143,11 +150,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -157,18 +160,9 @@ export default function LoginPage() {
                   "ログイン"
                 )}
               </Button>
+            </form>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    または
-                  </span>
-                </div>
-              </div>
-
+            <div className="mt-4 text-center">
               <Button
                 type="button"
                 variant="outline"
@@ -178,7 +172,7 @@ export default function LoginPage() {
               >
                 デモモードで開始
               </Button>
-            </form>
+            </div>
 
             <div className="mt-4 text-center">
               <Button
