@@ -195,11 +195,15 @@ export default function StudyDashboard() {
                           <Badge variant="secondary">
                             {
                               SUBJECTS.find((s) => s.value === session.subject)
-                                ?.label
+                                ?.value
                             }
                           </Badge>
                           <span className="text-sm text-muted-foreground">
-                            {new Date(session.date).toLocaleDateString()}
+                            {new Date(session.date).toLocaleDateString()} -{" "}
+                            {
+                              SUBJECTS.find((s) => s.value === session.subject)
+                                ?.label
+                            }
                           </span>
                         </div>
                         {session.note && (

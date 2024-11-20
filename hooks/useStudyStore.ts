@@ -10,16 +10,7 @@ interface StudySession {
   date: Date;
   subject: string;
   duration: number;
-  note?: string;
-}
-
-interface CustomCategory {
-  id: string;
-  user_id: string;
-  name: string;
-  color: string;
-  description?: string;
-  created_at: string;
+  note: string;
 }
 
 interface Goals {
@@ -28,8 +19,7 @@ interface Goals {
   dailyTodo: string;
 }
 
-const MAX_CATEGORIES = 10;
-const DEFAULT_COLOR = "#666666";
+const INITIAL_TIME = 25 * 60;
 
 interface StudyStore {
   dailyGoal: number;
@@ -46,26 +36,34 @@ interface StudyStore {
   currentSubject: string | null;
   currentTimer: number;
   startTime: Date | null;
-  customCategories: CustomCategory[];
+
+  // 基本機能
   setDailyGoal: (minutes: number) => void;
   setWeeklyGoal: (minutes: number) => void;
   setDailyTodo: (todo: string) => void;
   setGoals: (goals: Goals) => void;
   fetchGoals: () => Promise<void>;
+
+  // タイマー関連
+  setCurrentSubject: (subject: string | null) => void;
+  setCurrentTimer: (seconds: number) => void;
+  setStartTime: (time: Date | null) => void;
+  setIsStudying: (isStudying: boolean) => void;
+  resetTimer: () => void;
+
+  // 学習記録関連
   updateTotalTime: (minutes: number) => void;
   updateTodayTime: (minutes: number) => void;
   resetTodayTime: () => void;
   updateMotivation: (value: number) => void;
-  addCustomCategory: (
-    category: Omit<CustomCategory, "id" | "created_at">
-  ) => Promise<void>;
-  fetchCustomCategories: () => Promise<void>;
-  setCurrentSubject: (subject: string | null) => void;
+  addSession: (session: Omit<StudySession, "id">) => Promise<void>;
+  checkAndUpdateStreak: () => void;
 }
 
 export const useStudyStore = create<StudyStore>()(
   persist(
     (set, get) => ({
+      // 基本状態
       dailyGoal: 0,
       weeklyGoal: 0,
       dailyTodo: "",
@@ -76,11 +74,12 @@ export const useStudyStore = create<StudyStore>()(
       lastStudyDate: "",
       motivation: 100,
       sessions: [],
+
+      // タイマー状態
       isStudying: false,
       currentSubject: null,
-      currentTimer: 0,
+      currentTimer: INITIAL_TIME,
       startTime: null,
-      customCategories: [],
 
       setDailyGoal: (minutes) => {
         if (minutes < 0) throw new Error("目標時間は0以上である必要があります");
@@ -148,67 +147,133 @@ export const useStudyStore = create<StudyStore>()(
         set((state) => ({
           motivation: Math.min(100, Math.max(0, state.motivation + value)),
         })),
-      addCustomCategory: async (category) => {
+
+      setCurrentSubject: (subject) => set({currentSubject: subject}),
+      setStartTime: (time) => set({startTime: time}),
+
+      setCurrentTimer: (seconds) => {
+        if (seconds < 0)
+          throw new Error("タイマー値は0以上である必要があります");
+        set({currentTimer: seconds});
+      },
+
+      addSession: async (sessionData) => {
         try {
           const {
             data: {user},
           } = await supabase.auth.getUser();
           if (!user) throw new Error("認証されていないユーザーです");
 
-          const state = get();
-          if (state.customCategories.length >= MAX_CATEGORIES) {
-            throw new Error(`カテゴリーは最大${MAX_CATEGORIES}個までです`);
-          }
-
-          const newCategory = {
-            ...category,
+          // セッションデータの作成時にnoteをトリム
+          const newSession = {
             id: crypto.randomUUID(),
-            created_at: new Date().toISOString(),
-            user_id: user.id,
+            ...sessionData,
+            date: new Date(sessionData.date),
+            note: sessionData.note,
           };
 
-          const {error} = await supabase
-            .from("custom_categories")
-            .insert(newCategory);
+          // Supabaseへの保存時にnoteが空文字の場合はnullを設定
+          const {error} = await supabase.from("study_sessions").insert({
+            user_id: user.id,
+            subject: newSession.subject,
+            duration: newSession.duration,
+            note: newSession.note,
+            created_at: newSession.date.toISOString(),
+          });
 
           if (error) throw error;
 
           set((state) => ({
-            customCategories: [...state.customCategories, newCategory].sort(
-              (a, b) => a.name.localeCompare(b.name, "ja")
+            sessions: [newSession, ...state.sessions].sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
             ),
           }));
+
+          get().checkAndUpdateStreak();
         } catch (error) {
-          console.error("カテゴリーの追加に失敗しました:", error);
+          console.error("セッションの追加に失敗しました:", error);
           throw error;
         }
       },
-      fetchCustomCategories: async () => {
+
+      checkAndUpdateStreak: () => {
+        set((state) => {
+          const today = format(new Date(), "yyyy-MM-dd");
+          const lastDate = state.lastStudyDate;
+
+          let newStreak = state.streakDays;
+          if (lastDate === today) {
+            return state; // 同日の場合は更新しない
+          }
+
+          // 前日の場合はストリークを継続
+          const yesterday = format(
+            new Date(Date.now() - 24 * 60 * 60 * 1000),
+            "yyyy-MM-dd"
+          );
+
+          if (lastDate === yesterday) {
+            newStreak += 1;
+          } else {
+            newStreak = 1; // ストリークリセット
+          }
+
+          return {
+            streakDays: newStreak,
+            longestStreak: Math.max(state.longestStreak, newStreak),
+            lastStudyDate: today,
+          };
+        });
+      },
+
+      setIsStudying: (studying: boolean) => {
         try {
-          const {
-            data: {user},
-          } = await supabase.auth.getUser();
-          if (!user) throw new Error("認証されていないユーザーです");
+          const state = get();
+          // 学習開始時の検証
+          if (studying && !state.currentSubject) {
+            throw new Error("カテゴリーを選択してください");
+          }
 
-          const {data, error} = await supabase
-            .from("custom_categories")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("name");
-
-          if (error) throw error;
-          set({customCategories: data || []});
+          set({
+            isStudying: studying,
+          });
         } catch (error) {
-          console.error("カテゴリーの取得に失敗しました:", error);
+          console.error("学習状態の更新に失敗しました:", error);
           throw error;
         }
       },
-      setCurrentSubject: (subject) => set({currentSubject: subject}),
+
+      resetTimer: () => {
+        set({
+          isStudying: false,
+          currentTimer: INITIAL_TIME,
+        });
+      },
     }),
     {
       name: "study-store",
+      getStorage: () => localStorage,
+      partialize: (state) => ({
+        ...state,
+        sessions: state.sessions.map((session) => ({
+          ...session,
+          // 永続化時の日付変換を安全に行う
+          date:
+            session.date instanceof Date
+              ? session.date.toISOString()
+              : typeof session.date === "string"
+              ? session.date
+              : new Date().toISOString(),
+        })),
+      }),
       onRehydrateStorage: () => (state) => {
-        state?.fetchCustomCategories();
+        if (state) {
+          // 再水和時の日付変換
+          state.sessions = state.sessions.map((session) => ({
+            ...session,
+            date: new Date(session.date),
+          }));
+        }
       },
     }
   )
