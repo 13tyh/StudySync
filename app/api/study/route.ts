@@ -1,6 +1,8 @@
 import {NextResponse} from "next/server";
 import {supabase} from "@/lib/supabaseClient";
 import {z} from "zod";
+import {cookies} from "next/headers";
+import {createRouteHandlerClient} from "@supabase/auth-helpers-nextjs";
 
 const studySessionSchema = z.object({
   subject: z.string().min(1),
@@ -9,14 +11,26 @@ const studySessionSchema = z.object({
   date: z.string().datetime(),
 });
 
-const DEMO_USER_ID = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
-
 export async function GET() {
   try {
+    // Route Handlerでの認証済みクライアントの作成
+    const supabase = createRouteHandlerClient({cookies});
+
+    // 認証ユーザーの取得
+    const {
+      data: {user},
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({error: "Unauthorized"}, {status: 401});
+    }
+
+    // 認証ユーザーのセッション取得
     const {data: sessions, error} = await supabase
       .from("study_sessions")
       .select("*")
-      .eq("user_id", DEMO_USER_ID)
+      .eq("user_id", user.id)
       .order("date", {ascending: false});
 
     if (error) {
@@ -36,29 +50,36 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createRouteHandlerClient({cookies});
+    const {
+      data: {user},
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({error: "Unauthorized"}, {status: 401});
+    }
+
     const body = await request.json();
     const validatedData = studySessionSchema.parse(body);
 
-    const {data: session, error} = await supabase
-      .from("study_sessions")
-      .insert([
-        {
-          ...validatedData,
-          user_id: DEMO_USER_ID,
-        },
-      ])
-      .select()
-      .single();
+    const {error} = await supabase.from("study_sessions").insert({
+      ...validatedData,
+      user_id: user.id,
+    });
 
     if (error) {
-      console.error("Error creating session:", error);
+      console.error("Error inserting session:", error);
       return NextResponse.json(
         {error: "Failed to create study session"},
-        {status: error.code === "PGRST504" ? 504 : 500}
+        {status: 500}
       );
     }
 
-    return NextResponse.json(session);
+    return NextResponse.json(
+      {message: "Study session created successfully"},
+      {status: 201}
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

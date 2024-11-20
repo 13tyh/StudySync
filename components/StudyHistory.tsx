@@ -40,10 +40,25 @@ export default function StudyHistory() {
 
   const fetchSessions = async () => {
     try {
+      const {
+        data: {user},
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        toast({
+          title: "エラー",
+          description: "認証が必要です",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const {data, error} = await supabase
         .from("study_sessions")
         .select("*")
-        .order("date", {ascending: false});
+        .eq("user_id", user.id)
+        .order("created_at", {ascending: false});
 
       if (error) throw error;
       setSessions(data || []);
@@ -51,7 +66,7 @@ export default function StudyHistory() {
       console.error("Error fetching sessions:", error);
       toast({
         title: "エラー",
-        description: "学習記録の取得に失敗しました。",
+        description: "学習記録の取得に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -67,10 +82,15 @@ export default function StudyHistory() {
     if (!confirm("この記録を削除してもよろしいですか？")) return;
 
     try {
+      const {
+        data: {user},
+      } = await supabase.auth.getUser();
+
       const {error} = await supabase
         .from("study_sessions")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("user_id", user?.id); // ユーザーIDの一致を確認
 
       if (error) throw error;
 

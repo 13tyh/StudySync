@@ -1,26 +1,89 @@
 "use client";
 
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import {format} from "date-fns";
 import {ja} from "date-fns/locale";
+import {supabase} from "@/lib/supabaseClient";
+import {useToast} from "@/hooks/use-toast";
 import {Calendar} from "@/components/ui/calendar";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {useStudyStore} from "@/hooks/useStudyStore";
 import {CalendarDays, Clock} from "lucide-react";
 import {motion} from "framer-motion";
 
+type StudySession = {
+  id: string;
+  user_id: string;
+  subject: string;
+  duration: number;
+  note?: string;
+  created_at: string;
+  date?: Date;
+};
+
 export default function StudyCalendar() {
-  const {sessions} = useStudyStore();
-  console.log(sessions);
+  const {toast} = useToast();
+  const [sessions, setSessions] = useState<StudySession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );
 
+  // 認証済みユーザーのセッションを取得
+  const fetchAuthUserSessions = async () => {
+    try {
+      const {
+        data: {user},
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+      if (!user) {
+        toast({
+          title: "エラー",
+          description: "認証が必要です",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const {data, error} = await supabase
+        .from("study_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", {ascending: false});
+
+      if (error) throw error;
+
+      // 日付型に変換してからステートを更新
+      const formattedSessions = (data || []).map((session) => ({
+        ...session,
+        date: new Date(session.created_at),
+      }));
+
+      setSessions(formattedSessions);
+    } catch (error) {
+      console.error("セッション取得エラー:", error);
+      toast({
+        title: "エラー",
+        description: "学習記録の取得に失敗しました",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuthUserSessions();
+  }, []);
+
   const getDayContent = (date: Date) => {
     const dayStudy = sessions.filter(
       (session) =>
+        session.date &&
         format(new Date(session.date), "yyyy-MM-dd") ===
-        format(date, "yyyy-MM-dd")
+          format(date, "yyyy-MM-dd")
     );
 
     const totalMinutes = dayStudy.reduce(
@@ -50,8 +113,9 @@ export default function StudyCalendar() {
   const selectedDateSessions = selectedDate
     ? sessions.filter(
         (session) =>
+          session.date &&
           format(new Date(session.date), "yyyy-MM-dd") ===
-          format(selectedDate, "yyyy-MM-dd")
+            format(selectedDate, "yyyy-MM-dd")
       )
     : [];
 

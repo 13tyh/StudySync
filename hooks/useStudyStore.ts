@@ -10,7 +10,7 @@ interface StudySession {
   date: Date;
   subject: string;
   duration: number;
-  note: string;
+  note: string | null;
 }
 
 interface Goals {
@@ -169,10 +169,10 @@ export const useStudyStore = create<StudyStore>()(
             id: crypto.randomUUID(),
             ...sessionData,
             date: new Date(sessionData.date),
-            note: sessionData.note,
+            note: sessionData.note?.trim() || null, // null に変更
           };
 
-          // Supabaseへの保存時にnoteが空文字の場合はnullを設定
+          // Supabaseへの保存
           const {error} = await supabase.from("study_sessions").insert({
             user_id: user.id,
             subject: newSession.subject,
@@ -183,11 +183,19 @@ export const useStudyStore = create<StudyStore>()(
 
           if (error) throw error;
 
-          set((state) => ({
-            sessions: [newSession, ...state.sessions].sort(
-              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-            ),
-          }));
+          // ローカルステートの更新
+          set((state) => {
+            const updatedSessions = [newSession, ...state.sessions];
+            return {
+              sessions: updatedSessions.sort((a, b) => {
+                const dateA =
+                  a.date instanceof Date ? a.date : new Date(a.date);
+                const dateB =
+                  b.date instanceof Date ? b.date : new Date(b.date);
+                return dateB.getTime() - dateA.getTime();
+              }),
+            };
+          });
 
           get().checkAndUpdateStreak();
         } catch (error) {
