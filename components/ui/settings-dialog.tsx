@@ -5,9 +5,8 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
-// import {Settings2} from "lucide-react";
 import {useToast} from "@/hooks/use-toast";
-import {useStudyStore} from "@/hooks/useStudyStore";
+import useStudyStore from "@/hooks/useStudyStore";
 import {supabase} from "@/lib/supabaseClient";
 import {
   Dialog,

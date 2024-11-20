@@ -7,7 +7,7 @@ import {supabase} from "@/lib/supabaseClient";
 import {useToast} from "@/hooks/use-toast";
 import {Calendar} from "@/components/ui/calendar";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {useStudyStore} from "@/hooks/useStudyStore";
+import useStudyStore from "@/hooks/useStudyStore";
 import {CalendarDays, Clock} from "lucide-react";
 import {motion} from "framer-motion";
 

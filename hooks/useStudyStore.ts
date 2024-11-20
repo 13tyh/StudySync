@@ -1,8 +1,8 @@
 "use client";
 
 import {format} from "date-fns";
-import create from "zustand";
-import {persist} from "zustand/middleware";
+import {create} from "zustand";
+import {persist, createJSONStorage} from "zustand/middleware";
 import {supabase} from "@/lib/supabaseClient";
 
 interface StudySession {
@@ -60,7 +60,7 @@ interface StudyStore {
   checkAndUpdateStreak: () => void;
 }
 
-export const useStudyStore = create<StudyStore>()(
+const useStudyStore = create<StudyStore>()(
   persist(
     (set, get) => ({
       // 基本状態
@@ -259,30 +259,10 @@ export const useStudyStore = create<StudyStore>()(
       },
     }),
     {
-      name: "study-store",
-      getStorage: () => localStorage,
-      partialize: (state) => ({
-        ...state,
-        sessions: state.sessions.map((session) => ({
-          ...session,
-          // 永続化時の日付変換を安全に行う
-          date:
-            session.date instanceof Date
-              ? session.date.toISOString()
-              : typeof session.date === "string"
-              ? session.date
-              : new Date().toISOString(),
-        })),
-      }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // 再水和時の日付変換
-          state.sessions = state.sessions.map((session) => ({
-            ...session,
-            date: new Date(session.date),
-          }));
-        }
-      },
+      name: "study-storage", // ストレージの名前
+      storage: createJSONStorage(() => localStorage), // ここでstorageオプションを使用
     }
   )
 );
+
+export default useStudyStore;

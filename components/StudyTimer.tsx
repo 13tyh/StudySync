@@ -14,7 +14,7 @@ import {
 import {Textarea} from "@/components/ui/textarea";
 import {useToast} from "@/hooks/use-toast";
 import {cn} from "@/lib/utils";
-import {useStudyStore} from "@/hooks/useStudyStore";
+import useStudyStore from "@/hooks/useStudyStore";
 import {Progress} from "@/components/ui/progress";
 import {
   Dialog,

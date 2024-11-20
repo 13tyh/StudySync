@@ -5,7 +5,7 @@ import {motion} from "framer-motion";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Progress} from "@/components/ui/progress";
 import {Badge} from "@/components/ui/badge";
-import {useStudyStore} from "@/hooks/useStudyStore";
+import useStudyStore from "@/hooks/useStudyStore";
 import {SUBJECTS} from "./StudyTimer";
 import {SettingsDialog} from "./ui/settings-dialog";
 import {
