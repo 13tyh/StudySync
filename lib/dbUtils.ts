@@ -48,9 +48,6 @@ export async function insertStudySession(
     .insert(session)
     .select(); // 挿入後のデータを取得
   if (error) {
-    console.error("データ挿入エラー:", error.message);
-    console.error("エラー詳細:", error.details);
-    console.error("エラーヒント:", error.hint);
     throw error;
   }
   return data;
