@@ -43,8 +43,16 @@ export async function fetchGoals(userId: string) {
 export async function insertStudySession(
   session: Database["public"]["Tables"]["study_sessions"]["Insert"]
 ) {
-  const {data, error} = await supabase.from("study_sessions").insert(session);
-  if (error) throw error;
+  const {data, error} = await supabase
+    .from("study_sessions")
+    .insert(session)
+    .select(); // 挿入後のデータを取得
+  if (error) {
+    console.error("データ挿入エラー:", error.message);
+    console.error("エラー詳細:", error.details);
+    console.error("エラーヒント:", error.hint);
+    throw error;
+  }
   return data;
 }
 

@@ -12,6 +12,7 @@ import {
   deleteStudySession,
   updateStudySession,
 } from "@/lib/dbUtils";
+import {toast} from "@/components/ui/use-toast";
 
 interface StudySession {
   id: string;
@@ -158,21 +159,22 @@ const useStudyStore = create<StudyStore>()(
           if (!user) throw new Error("認証が必要です");
 
           const newSession = {
-            id: crypto.randomUUID(),
             user_id: user.id,
-            ...sessionData,
-            date: sessionData.date.toISOString(), // Convert date to string
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            subject: sessionData.subject,
+            duration: sessionData.duration,
+            note: sessionData.note || null,
+            date: sessionData.date.toISOString(), // 日付をISOStringに変換
           };
 
-          await insertStudySession(newSession);
+          const result = await insertStudySession(newSession);
+          if (!result || result.length === 0)
+            throw new Error("セッションの追加に失敗しました");
 
           set((state) => ({
             sessions: [
               {
-                ...newSession,
-                date: new Date(newSession.date),
+                ...result[0],
+                date: new Date(result[0].date),
               },
               ...state.sessions,
             ].sort(
@@ -183,6 +185,11 @@ const useStudyStore = create<StudyStore>()(
           get().checkAndUpdateStreak();
         } catch (error) {
           console.error("セッション追加エラー:", error);
+          toast({
+            title: "エラー",
+            description: "学習記録の保存に失敗しました",
+            variant: "destructive",
+          });
           throw error;
         }
       },
