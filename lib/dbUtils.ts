@@ -15,10 +15,27 @@ export async function fetchGoals(userId: string) {
     .from("goals")
     .select("*")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle(); // 修正：.single() → .maybeSingle()
 
   if (error) throw error;
-  if (!data) throw new Error("目標が見つかりません");
+
+  if (!data) {
+    // データがない場合、初期目標を作成
+    const {data: newGoals, error: insertError} = await supabase
+      .from("goals")
+      .insert({
+        user_id: userId,
+        daily_goal: 120, // カラム名を確認
+        weekly_goal: 840, // カラム名を確認
+        daily_todo: "",
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    return newGoals;
+  }
 
   return data;
 }

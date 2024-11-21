@@ -23,20 +23,34 @@ export async function GET(request: Request) {
       .from("goals")
       .select("*")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== "PGRST116") {
-      console.error("Error fetching goals:", error);
-      throw error;
+    if (error) {
+      return NextResponse.json({error: error.message}, {status: 500});
     }
 
-    return NextResponse.json(
-      goals || {
-        dailyGoal: 120,
-        weeklyGoal: 840,
-        dailyTodo: "",
+    if (!goals) {
+      const {data: newGoals, error: insertError} = await supabase
+        .from("goals")
+        .insert({
+          user_id: userId,
+          dailyGoal: 120,
+          weeklyGoal: 840,
+          dailyTodo: "",
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        return NextResponse.json({error: insertError.message}, {status: 500});
       }
-    );
+
+      // 挿入した新しいデータを返す
+      return NextResponse.json(newGoals);
+    }
+
+    // 既存の goals データを返す
+    return NextResponse.json(goals);
   } catch (error) {
     console.error("Error fetching goals:", error);
     return NextResponse.json({error: "Failed to fetch goals"}, {status: 500});
