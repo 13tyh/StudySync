@@ -57,16 +57,10 @@ export default function StudyDashboard() {
       try {
         setIsLoading(true);
 
-        // デバッグ用のログを追加
-        console.log("認証状態を確認中...");
-
         const {
           data: {user},
           error: authError,
         } = await supabase.auth.getUser();
-
-        // デバッグ用のログ
-        console.log("認証結果:", {user, authError});
 
         if (authError) {
           console.error("認証エラー:", authError);
@@ -178,17 +172,29 @@ export default function StudyDashboard() {
         </motion.div>
 
         <motion.div variants={itemAnimation}>
-          <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all">
+          <Card className="bg-gradient-to-br from-white/95 to-white/75 dark:from-gray-800/95 dark:to-gray-900/75 backdrop-blur-lg shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/20 dark:border-white/10">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">継続日数</CardTitle>
-              <Flame className="h-4 w-4 text-orange-500" />
+              <div className="flex items-center gap-2">
+                <Flame className="h-5 w-5 text-orange-500 animate-pulse" />
+                <CardTitle className="text-base font-semibold">
+                  継続日数
+                </CardTitle>
+              </div>
+              <Badge
+                variant="secondary"
+                className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400"
+              >
+                {streakDays}日
+              </Badge>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{streakDays}日</div>
-              <div className="flex items-center mt-2">
-                <Trophy className="h-4 w-4 text-yellow-500 mr-2" />
-                <span className="text-sm text-muted-foreground">
-                  最長記録: {longestStreak}日
+              <div className="flex items-center justify-between mt-2 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                  <span className="font-medium">最長記録</span>
+                </div>
+                <span className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                  {longestStreak}日
                 </span>
               </div>
             </CardContent>
@@ -196,19 +202,31 @@ export default function StudyDashboard() {
         </motion.div>
 
         <motion.div variants={itemAnimation}>
-          <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all">
+          <Card className="bg-gradient-to-br from-white/95 to-white/75 dark:from-gray-800/95 dark:to-gray-900/75 backdrop-blur-lg shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/20 dark:border-white/10">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                モチベーション
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-emerald-500" />
+                <CardTitle className="text-base font-semibold">
+                  モチベーション
+                </CardTitle>
+              </div>
+              <Badge
+                variant="secondary"
+                className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+              >
+                {motivation}%
+              </Badge>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{motivation}%</div>
-              <Progress value={motivation} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-2">
-                継続的な学習でモチベーションアップ！
-              </p>
+              <div className="space-y-4">
+                <Progress value={motivation} className="h-2.5" />
+                <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                    継続的な学習でモチベーションアップ！
+                  </p>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -228,11 +246,9 @@ export default function StudyDashboard() {
             </CardHeader>
             <CardContent>
               {dailyTodo ? (
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
-                    <p className="text-sm flex-grow mt-1">{dailyTodo}</p>
-                  </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
+                  <p className="text-sm mt-1">{dailyTodo}</p>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-4">
