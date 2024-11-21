@@ -253,11 +253,13 @@ export default function StudyDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {userSessions
-                  .slice(-3)
-                  .reverse()
-                  .map((session) => (
+              <div className="space-y-4">
+                {isLoading ? (
+                  <div className="flex justify-center">
+                    <div className="animate-spin h-8 w-8 border-4 border-indigo-500 rounded-full border-t-transparent" />
+                  </div>
+                ) : userSessions.length > 0 ? (
+                  userSessions.map((session) => (
                     <div
                       key={session.id}
                       className="flex items-center justify-between p-2 rounded-lg border bg-muted/50"
@@ -271,7 +273,8 @@ export default function StudyDashboard() {
                             }
                           </Badge>
                           <span className="text-sm text-muted-foreground">
-                            {new Date(session.date).toLocaleDateString()} -{" "}
+                            {new Date(session.created_at).toLocaleDateString()}{" "}
+                            -{" "}
                             {
                               SUBJECTS.find((s) => s.value === session.subject)
                                 ?.label
@@ -286,8 +289,8 @@ export default function StudyDashboard() {
                       </div>
                       <Badge>{session.duration}分</Badge>
                     </div>
-                  ))}
-                {userSessions.length === 0 && (
+                  ))
+                ) : (
                   <div className="text-center text-sm text-muted-foreground py-4">
                     まだ学習記録がありません
                   </div>

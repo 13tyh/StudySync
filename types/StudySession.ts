@@ -1,4 +1,5 @@
 export type StudySession = {
+  created_at: string | number | Date;
   id: string;
   date: Date;
   subject: string;
