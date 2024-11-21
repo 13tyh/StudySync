@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   Edit3,
 } from "lucide-react";
+import {useRouter} from "next/navigation";
+import {Button} from "@/components/ui/button";
 
 const containerAnimation = {
   hidden: {opacity: 0},
@@ -51,6 +53,7 @@ export default function StudyDashboard() {
     dailyTodo,
     fetchGoals,
   } = useStudyStore();
+  const router = useRouter();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -73,7 +76,7 @@ export default function StudyDashboard() {
 
         if (!user) {
           // ログインページにリダイレクト
-          window.location.href = "/login";
+          router.push("/login");
           return;
         }
 
@@ -85,7 +88,8 @@ export default function StudyDashboard() {
           .from("study_sessions")
           .select("*")
           .eq("user_id", user.id)
-          .order("created_at", {ascending: false});
+          .order("created_at", {ascending: false})
+          .limit(3); // 直近3件に制限
 
         if (sessionsError) {
           throw sessionsError;
@@ -104,7 +108,7 @@ export default function StudyDashboard() {
     };
 
     fetchUserData();
-  }, []);
+  }, [router]);
 
   const dailyProgress = (todayStudyTime / dailyGoal) * 100;
   const weeklyProgress = (totalStudyTime / weeklyGoal) * 100;
@@ -259,9 +263,11 @@ export default function StudyDashboard() {
         <motion.div variants={itemAnimation}>
           <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-indigo-500" />
-                最近の学習記録
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-indigo-500" />
+                  最近の学習記録
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
