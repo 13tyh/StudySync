@@ -101,7 +101,6 @@ export default function StudyTimer() {
       setNote("");
       setShowNoteDialog(false);
     } catch (error) {
-      console.error("学習記録の保存に失敗:", error);
       toast({
         title: "エラー",
         description: "学習記録の保存に失敗しました",
@@ -130,7 +129,6 @@ export default function StudyTimer() {
       const achievementRate = (duration / (INITIAL_TIME / 60)) * 100;
       updateMotivation(achievementRate > 80 ? 5 : achievementRate > 50 ? 3 : 1);
     } catch (error) {
-      console.error("セッション完了処理エラー:", error);
       toast({
         title: "エラー",
         description: "処理に失敗しました",
@@ -157,7 +155,6 @@ export default function StudyTimer() {
         handleComplete();
       }
     } catch (error) {
-      console.error("タイマー操作エラー:", error);
       toast({
         title: "エラー",
         description: "タイマーの操作に失敗しました",

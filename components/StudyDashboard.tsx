@@ -63,7 +63,6 @@ export default function StudyDashboard() {
         } = await supabase.auth.getUser();
 
         if (authError) {
-          console.error("認証エラー:", authError);
           toast({
             title: "認証エラー",
             description: authError.message,
@@ -73,7 +72,6 @@ export default function StudyDashboard() {
         }
 
         if (!user) {
-          console.log("ユーザーが見つかりません");
           // ログインページにリダイレクト
           window.location.href = "/login";
           return;
@@ -90,13 +88,11 @@ export default function StudyDashboard() {
           .order("created_at", {ascending: false});
 
         if (sessionsError) {
-          console.error("セッション取得エラー:", sessionsError);
           throw sessionsError;
         }
 
         setUserSessions(sessions || []);
       } catch (error) {
-        console.error("データ取得エラー:", error);
         toast({
           title: "エラー",
           description: "データの取得に失敗しました。再度ログインしてください。",

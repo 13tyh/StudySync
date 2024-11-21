@@ -39,7 +39,6 @@ export default function StudyHistory() {
 
       setSessions(data || []);
     } catch (error) {
-      console.error("Error fetching sessions:", error);
       toast({
         title: "エラー",
         description: "学習履歴の取得に失敗しました",

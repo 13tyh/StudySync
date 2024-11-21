@@ -7,7 +7,6 @@ import {supabase} from "@/lib/supabaseClient";
 import {useToast} from "@/hooks/use-toast";
 import {Calendar} from "@/components/ui/calendar";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import useStudyStore from "@/hooks/useStudyStore";
 import {CalendarDays, Clock} from "lucide-react";
 import {motion} from "framer-motion";
 
@@ -63,7 +62,6 @@ export default function StudyCalendar() {
 
       setSessions(formattedSessions);
     } catch (error) {
-      console.error("セッション取得エラー:", error);
       toast({
         title: "エラー",
         description: "学習記録の取得に失敗しました",
