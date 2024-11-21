@@ -18,6 +18,16 @@ import {useToast} from "@/components/ui/use-toast";
 import {Mail, Lock, Loader2} from "lucide-react";
 import {motion} from "framer-motion";
 
+const containerVariants = {
+  hidden: {opacity: 0},
+  visible: {opacity: 1, transition: {staggerChildren: 0.3}},
+};
+
+const itemVariants = {
+  hidden: {opacity: 0, y: 20},
+  visible: {opacity: 1, y: 0},
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const {toast} = useToast();
@@ -70,9 +80,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-4">
       <motion.div
-        initial={{opacity: 0, y: 20}}
-        animate={{opacity: 1, y: 0}}
-        className="w-full max-w-md"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="w-full max-w-md space-y-8"
       >
         <Card className="bg-white dark:bg-gray-900 shadow-2xl border border-white/20">
           <CardHeader className="text-center">
@@ -148,6 +159,15 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+            <div className="mt-4 text-center">
+              <Button
+                variant="link"
+                onClick={() => router.push("/signup")}
+                className="text-sm text-muted-foreground hover:text-primary"
+              >
+                アカウントをお持ちでない方こちら
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

@@ -1,4 +1,3 @@
-import {createRouteHandlerClient} from "@supabase/auth-helpers-nextjs";
 import {NextResponse} from "next/server";
 import {z} from "zod";
 import {supabase} from "@/lib/supabaseClient";
