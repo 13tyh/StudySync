@@ -28,9 +28,12 @@
    4.「履歴」→今まで取り組んだものを一覧表示している
 
 ## 使用した技術
+ 
  フロントエンド: Next.js Typescript
+ 
  バックエンド: Supabase
- デザイン: RadixUI  three.js  //chatGPTと相談しながら実装しながら行いました。
+ 
+ ※chatGPTと相談しつつ実装しました。
 
 ## 使用方法
    1.リンクに飛ぶ https://studysync-13tyh.vercel.app
