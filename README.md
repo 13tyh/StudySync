@@ -34,7 +34,7 @@
  
  フロントエンド: Next.js Typescript
  
- バックエンド: Supabase
+ バックエンド: Next.js Supabase
  
  ※chatGPTと相談しつつ実装しました。
 
